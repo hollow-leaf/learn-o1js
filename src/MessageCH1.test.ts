@@ -1,4 +1,3 @@
-import { caml_fq_srs_maybe_lagrange_commitment } from 'o1js/dist/node/bindings/compiled/node_bindings/plonk_wasm.cjs';
 import { MessageContract, Message} from './MessageCH1'
 import { Gadgets, Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap } from 'o1js';
 
