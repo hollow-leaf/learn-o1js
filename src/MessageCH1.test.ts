@@ -43,7 +43,6 @@ describe('MessageContract', () => {
 
     const addr = PrivateKey.random().toPublicKey();
 
-    
     const map = new MerkleMap();
     const msg = new Message({ sender: addr, content: Field(0) });
     const path = map.getWitness(msg.hash());
@@ -56,61 +55,89 @@ describe('MessageContract', () => {
     await txn.sign([senderKey]).send();
 
     const counter = Number(zkApp.addressCounter.get().toBigInt());
-    console.log(counter);
     expect(counter).toEqual(1);
   })
 
-  // it('store less than 100 eligible addresses', async () => {
-  //   await localDeploy();
-  //   let counter = Number(zkApp.addressCounter.get().toBigInt());
-  //   console.log(counter);
-  //   for (let i = 0; i < 100; i++) {
-  //     const addr = PrivateKey.random().toPublicKey();
-  //     console.log('round', i, addr.toBase58());
+  describe('store message', () => {
+    it('validate cond1 messages: If flag 1 is true, then all other flags must be false', async () => {
+      await localDeploy();
+      const content = Field(55688)
+      const flag = Field(0b100000) 
+      const message = Gadgets.xor(Gadgets.leftShift64(content, 6), flag, 64);
       
-  //     if (i === 0) { const map = new MerkleMap(); }
-  //     else { const map = zkApp.mapRoot.get()}
-  //     const msg = new Message({ sender: addr, content: Field.from(0) });
-  //     const path = map.getWitness(msg.hash());
-  //     map.set(msg.hash(), Field(0));
-  //     // update transaction
-  //     const txn = await Mina.transaction(senderAccount, () => {
-  //       zkApp.storeEligibleAddress(addr, path);
-  //     });
-  //     await txn.prove();
-  //     await txn.sign([senderKey]).send();
-  //   }
+      const txn = await Mina.transaction(senderAccount, () => {
+        zkApp.validateMessage(message);
+      });
+      await txn.prove();
+      await txn.sign([senderKey]).send();
+    })
 
-  //   counter = Number(zkApp.addressCounter.get().toBigInt());
-  //   console.log(counter);
-  //   const map = new MerkleMap();
-  //   const msg = new Message({ sender: PrivateKey.random().toPublicKey(), content: Field(0) });
-  //   const path = map.getWitness(msg.hash());
-  //   map.set(msg.hash(), Field(0));
-  //   // update transaction
-  //   const txn = await Mina.transaction(senderAccount, () => {
-  //     zkApp.storeEligibleAddress(PrivateKey.random().toPublicKey(), path);
-  //   });
-  //   await txn.prove();
-  //   await txn.sign([senderKey]).send();
-  // })
+    it('validate cond2 messages: If flag 2 is true, then flag 3 must also be true.', async () => {
+      await localDeploy();
+      const content = Field(55688)
+      const flag = Field(0b011000) 
+      const message = Gadgets.xor(Gadgets.leftShift64(content, 6), flag, 64);
 
-  it('user can send a message', async () => {
-    await localDeploy();
+      const txn = await Mina.transaction(senderAccount, () => {
+        zkApp.validateMessage(message);
+      });
+      await txn.prove();
+      await txn.sign([senderKey]).send();
+    })
 
-    // const msg = new Message({ sender: senderAccount, content: Field(0) });
-    const content = Field(11111111)
-    const flag = Field(0b001100)
-    const message = Gadgets.xor(
-      Gadgets.leftShift64(content, 6), flag, 70);
-    const msg = new Message({ sender: senderAccount, content: content });
-    // const path = zkApp.mapRoot.get().getWitness(msg.hash());
-    // zkApp.mapRoot.get().set(msg.hash(), Field(0));
+    it('validate cond3 messages: If flag 4 is true, then flags 5 and 6 must be false.', async () => {
+      await localDeploy();
+      const content = Field(55688)
+      const flag = Field(0b000100) 
+      const message = Gadgets.xor(Gadgets.leftShift64(content, 6), flag, 64);
 
-    // const txn = await Mina.transaction(senderAccount, () => {
-    //   zkApp.storeEligibleAddress(senderAccount, path);
-    // });
-    // await txn.prove();
-    // await txn.sign([senderKey]).send();
+      const txn = await Mina.transaction(senderAccount, () => {
+        zkApp.validateMessage(message);
+      });
+      await txn.prove();
+      await txn.sign([senderKey]).send();
+    })
+
+    it('user can store a message', async () => {
+      await localDeploy();
+      
+      const priv = PrivateKey.random()
+      const addr = priv.toPublicKey();
+
+      const map = new MerkleMap();
+      const msg = new Message({ sender: addr, content: Field(0) });
+      map.set(msg.hash(), Field(0));
+      const witness = map.getWitness(msg.hash());
+      const txn = await Mina.transaction(senderAccount, () => {
+        zkApp.storeEligibleAddress(addr, witness);
+      });
+      await txn.prove();
+      await txn.sign([senderKey]).send();
+
+
+      const content = Field(55688)
+      // cond1: 0b100000, cond2: 0b010000, cond3: 0b001000, cond4: 0b000100, cond5: 0b000010, cond6: 0b000001
+      const flag = Field(0b100000) 
+      console.log(flag)
+      console.log(Gadgets.leftShift64(content, 6), flag, 64)
+      const message = Gadgets.xor(
+        Gadgets.leftShift64(content, 6), flag, 64); // assume the message is 64 bits
+        console.log(message)
+      const newMsg = new Message({ sender: addr, content: content });
+      const txn2 = await Mina.transaction(senderAccount, () => {
+        zkApp.storeMessage(addr, message, witness);
+      });
+      await txn2.prove();
+      await txn2.sign([senderKey]).send();
+      // const txn2 = await Mina.transaction(addr, () => {
+      //   zkApp.storeMessage(addr, Field(0), witness);
+      // });
+      // await txn2.prove();
+      // await txn2.sign([priv]).send();
+
+      // map.set(newMsg.hash(), message);
+      // const root = map.getRoot()
+      // expect(root).toEqual(zkApp.mapRoot.get());
+    })
   })
 })

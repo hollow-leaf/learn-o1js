@@ -26,30 +26,36 @@ class Message extends Struct({
 }
 
 class MessageContract extends SmartContract {
+  // @state(PublicKey) owner = State<PublicKey>();
   @state(Field) mapRoot = State<Field>();
   @state(UInt64) addressCounter = State<UInt64>();
-  
+
   events = { 'MessageReceived': Field }
   @method
   init() {
     super.init();
     this.addressCounter.set(UInt64.from(0));
-
-    const merkleMap = new MerkleMap();
-    this.mapRoot.set(merkleMap.getRoot());
+    // this.owner.set(this.sender);
+    this.mapRoot.set(new MerkleMap().getRoot());
   }
 
+  @method
+  onlyOwner(): void {
+    // const owner = this.owner.getAndRequireEquals();
+    // owner.assertEquals(this.sender);
+  }
   @method
   storeEligibleAddress(address: PublicKey, path: MerkleMapWitness): void {
     // Assuming only administrators can call this method to add eligible addresses
     // Check if the address is not already added and the limit is not reached
+    // this.onlyOwner();
     this.addressCounter.getAndRequireEquals().assertLessThan(UInt64.from(100), 'Addresses Limit reached');
 
     // make sure the address is not already added
     const mapRoot = this.mapRoot.getAndRequireEquals();
     const [oldRoot, key] = path.computeRootAndKey(Field(0));
 
-    const addr = new Message({ sender: address, content: Field.from(0) });
+    const addr = new Message({ sender: address, content: Field(0) });
     oldRoot.assertEquals(mapRoot);
     key.assertEquals(addr.hash());
     
@@ -58,14 +64,15 @@ class MessageContract extends SmartContract {
     this.mapRoot.set(path.computeRootAndKey(Field(1))[0]);
   }
 
+  @method
   validateMessage(message: Field): Bool {
     const msg = [
-      Gadgets.and(message, Field(1), 64).equals(Field(1)),
-      Gadgets.and(message, Field(2), 64).equals(Field(2)),
-      Gadgets.and(message, Field(4), 64).equals(Field(4)),
-      Gadgets.and(message, Field(8), 64).equals(Field(8)),
+      Gadgets.and(message, Field(32), 64).equals(Field(32)),
       Gadgets.and(message, Field(16), 64).equals(Field(16)),
-      Gadgets.and(message, Field(32), 64).equals(Field(64)),
+      Gadgets.and(message, Field(8), 64).equals(Field(8)),
+      Gadgets.and(message, Field(4), 64).equals(Field(4)),
+      Gadgets.and(message, Field(2), 64).equals(Field(2)),
+      Gadgets.and(message, Field(1), 64).equals(Field(1)),
     ]
     // If flag 1 is true, then flags 2, 3, 4, 5 and 6 must be false.
     const check1 = Provable.if(
@@ -90,30 +97,31 @@ class MessageContract extends SmartContract {
           and(msg[5].equals(false)),
           Bool(true)
         )
-        return check1.and(check2).and(check3)
+
+      check1.and(check2).and(check3).assertTrue('Invalid message')
+      return check1.and(check2).and(check3)
   }
   @method
-  storeMessage(sender: PublicKey, message: Field, path: MerkleMapWitness): void {
+  storeMessage(address: PublicKey, message: Field, path: MerkleMapWitness): void {
     // Check if the sender is eligible
-    const valid = this.validateMessage(message)
-    valid.assertTrue('Invalid message')
+    this.validateMessage(message)
 
     const context = Gadgets.rightShift64(message, 6)
 
     // Check if the sender has not already deposited a message
     const mapRoot = this.mapRoot.getAndRequireEquals();
     const [oldRoot, key] = path.computeRootAndKey(Field(0));
-
-    const addr = new Message({ sender, content: Field.from(0) });
+    console.log('oldRoot', oldRoot)
+    const addr = new Message({ sender: address, content: Field(0) });
     oldRoot.assertEquals(mapRoot);
     key.assertEquals(addr.hash());
 
-    // Store the message in the Merkle Tree
-    const newMessage = new Message({ sender, content: message });
-    this.mapRoot.set(path.computeRootAndKey(newMessage.hash())[0]);
-
-    // Emit an event
-    this.emitEvent('MessageReceived', { sender, message });
+    // // Store the message in the Merkle Tree
+    // const newMessage = new Message({ sender, content: context });
+    // this.mapRoot.set(path.computeRootAndKey(newMessage.hash())[0]);
+    // console.log('newMessage', newMessage)
+    // // Emit an event
+    // this.emitEvent('MessageReceived', { sender, message });
   }
 }
 
