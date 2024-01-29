@@ -14,6 +14,7 @@ import {
   Provable,
   Mina,
   Struct,
+  FlexibleProvablePure,
 } from 'o1js';
 
 class Message extends Struct({
@@ -33,7 +34,7 @@ class MessageContract extends SmartContract {
   @state(PublicKey) owner = State<PublicKey>();
   @state(Field) mapRoot = State<Field>();
   @state(UInt64) addressCounter = State<UInt64>();
-
+  events = { 'MessageReceived': Field };
   @method
   init() {
     super.init();
@@ -121,6 +122,8 @@ class MessageContract extends SmartContract {
     // Store the message in the Merkle Tree
     const newMessage = new Message({ sender: address, content: context });
     this.mapRoot.set(path.computeRootAndKey(newMessage.hash())[0]);
+    // If the above rules are passed, then an event should be emitted to show that a message has been received
+    this.emitEvent('MessageReceived', context);
   }
 }
 

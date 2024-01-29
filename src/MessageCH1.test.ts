@@ -37,13 +37,14 @@ describe('MessageContract', () => {
     // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
-  describe('store address', () => {
+  describe('Admin(deployer): store address', () => {
     it('store eligible address', async () => {
       await localDeploy();
 
       const addr = PrivateKey.random().toPublicKey();
 
       const map = new MerkleMap();
+      // only deposit once for each address
       const msg = new Message({ sender: addr, content: Field(0) });
       const path = map.getWitness(msg.pkHash());
       map.set(msg.pkHash(), Field(0));
@@ -63,7 +64,7 @@ describe('MessageContract', () => {
     })
 
     // case: too slow to run in github action almost (181211 ms)
-    it('store eligible address', async () => { 
+    it('store 100 eligible address', async () => { 
       await localDeploy();
       const map = new MerkleMap();
       for(let i = 0; i < 100; i++) {
@@ -83,7 +84,7 @@ describe('MessageContract', () => {
     })
   })
 
-  describe('store message', () => {
+  describe('Sender: store message', () => {
     it('validate cond1 messages: If flag 1 is true, then all other flags must be false', async () => {
       await localDeploy();
       const content = Field(55688)
