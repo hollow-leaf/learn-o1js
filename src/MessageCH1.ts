@@ -23,32 +23,35 @@ class Message extends Struct({
   hash(): Field {
     return Poseidon.hash(Message.toFields(this))
   }
+
+  pkHash(): Field {
+    return Poseidon.hash(this.sender.toFields())
+  }
 }
 
 class MessageContract extends SmartContract {
-  // @state(PublicKey) owner = State<PublicKey>();
+  @state(PublicKey) owner = State<PublicKey>();
   @state(Field) mapRoot = State<Field>();
   @state(UInt64) addressCounter = State<UInt64>();
 
-  events = { 'MessageReceived': Field }
   @method
   init() {
     super.init();
     this.addressCounter.set(UInt64.from(0));
-    // this.owner.set(this.sender);
+    this.owner.set(this.sender);
     this.mapRoot.set(new MerkleMap().getRoot());
   }
 
   @method
   onlyOwner(): void {
-    // const owner = this.owner.getAndRequireEquals();
-    // owner.assertEquals(this.sender);
+    const owner = this.owner.getAndRequireEquals();
+    owner.assertEquals(this.sender);
   }
   @method
   storeEligibleAddress(address: PublicKey, path: MerkleMapWitness): void {
     // Assuming only administrators can call this method to add eligible addresses
     // Check if the address is not already added and the limit is not reached
-    // this.onlyOwner();
+    this.onlyOwner();
     this.addressCounter.getAndRequireEquals().assertLessThan(UInt64.from(100), 'Addresses Limit reached');
 
     // make sure the address is not already added
@@ -57,11 +60,11 @@ class MessageContract extends SmartContract {
 
     const addr = new Message({ sender: address, content: Field(0) });
     oldRoot.assertEquals(mapRoot);
-    key.assertEquals(addr.hash());
+    key.assertEquals(addr.pkHash());
     
     // Store the address in the Merkle Tree
     this.addressCounter.set(this.addressCounter.get().add(UInt64.from(1)));
-    this.mapRoot.set(path.computeRootAndKey(Field(1))[0]);
+    this.mapRoot.set(path.computeRootAndKey(addr.hash())[0]);
   }
 
   @method
@@ -105,23 +108,19 @@ class MessageContract extends SmartContract {
   storeMessage(address: PublicKey, message: Field, path: MerkleMapWitness): void {
     // Check if the sender is eligible
     this.validateMessage(message)
-
-    const context = Gadgets.rightShift64(message, 6)
+    // need type, no type will pop up error!!!!
+    const context: Field = Gadgets.rightShift64(message, 6)
 
     // Check if the sender has not already deposited a message
     const mapRoot = this.mapRoot.getAndRequireEquals();
-    const [oldRoot, key] = path.computeRootAndKey(Field(0));
-    console.log('oldRoot', oldRoot)
     const addr = new Message({ sender: address, content: Field(0) });
+    const [oldRoot, key] = path.computeRootAndKey(addr.hash());
     oldRoot.assertEquals(mapRoot);
-    key.assertEquals(addr.hash());
+    key.assertEquals(addr.pkHash());
 
-    // // Store the message in the Merkle Tree
-    // const newMessage = new Message({ sender, content: context });
-    // this.mapRoot.set(path.computeRootAndKey(newMessage.hash())[0]);
-    // console.log('newMessage', newMessage)
-    // // Emit an event
-    // this.emitEvent('MessageReceived', { sender, message });
+    // Store the message in the Merkle Tree
+    const newMessage = new Message({ sender: address, content: context });
+    this.mapRoot.set(path.computeRootAndKey(newMessage.hash())[0]);
   }
 }
 

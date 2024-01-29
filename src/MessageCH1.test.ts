@@ -1,5 +1,5 @@
 import { MessageContract, Message} from './MessageCH1'
-import { Gadgets, Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap } from 'o1js';
+import { Gadgets, Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap, Poseidon } from 'o1js';
 
 let proofsEnabled = false;
 
@@ -37,25 +37,50 @@ describe('MessageContract', () => {
     // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
+  describe('store address', () => {
+    it('store eligible address', async () => {
+      await localDeploy();
 
-  it('store eligible address', async () => {
-    await localDeploy();
+      const addr = PrivateKey.random().toPublicKey();
 
-    const addr = PrivateKey.random().toPublicKey();
+      const map = new MerkleMap();
+      const msg = new Message({ sender: addr, content: Field(0) });
+      const path = map.getWitness(msg.pkHash());
+      map.set(msg.pkHash(), Field(0));
+      // update transaction
+      const txn = await Mina.transaction(deployerAccount, () => {
+        zkApp.storeEligibleAddress(addr, path);
+      });
+      await txn.prove();
+      await txn.sign([deployerKey]).send();
 
-    const map = new MerkleMap();
-    const msg = new Message({ sender: addr, content: Field(0) });
-    const path = map.getWitness(msg.hash());
-    map.set(msg.hash(), Field(0));
-    // update transaction
-    const txn = await Mina.transaction(senderAccount, () => {
-      zkApp.storeEligibleAddress(addr, path);
-    });
-    await txn.prove();
-    await txn.sign([senderKey]).send();
+      const counter = Number(zkApp.addressCounter.get().toBigInt());
+      const root = zkApp.mapRoot.get();
+      map.set(msg.pkHash(), msg.hash());
+      
+      expect(counter).toEqual(1);
+      expect(root).toEqual(map.getRoot());
+    })
 
-    const counter = Number(zkApp.addressCounter.get().toBigInt());
-    expect(counter).toEqual(1);
+    // case: too slow to run in github action almost (181211 ms)
+    it('store eligible address', async () => { 
+      await localDeploy();
+      const map = new MerkleMap();
+      for(let i = 0; i < 100; i++) {
+        const addr = PrivateKey.random().toPublicKey();
+        const msg = new Message({ sender: addr, content: Field(0) });
+        const path = map.getWitness(msg.pkHash());
+        map.set(msg.pkHash(), Field(0));
+        // update transaction
+        const txn = await Mina.transaction(deployerAccount, () => {
+          zkApp.storeEligibleAddress(addr, path);
+        });
+        await txn.prove();
+        await txn.sign([deployerKey]).send();
+
+        map.set(msg.pkHash(), msg.hash());
+      }
+    })
   })
 
   describe('store message', () => {
@@ -106,38 +131,29 @@ describe('MessageContract', () => {
 
       const map = new MerkleMap();
       const msg = new Message({ sender: addr, content: Field(0) });
-      map.set(msg.hash(), Field(0));
-      const witness = map.getWitness(msg.hash());
-      const txn = await Mina.transaction(senderAccount, () => {
-        zkApp.storeEligibleAddress(addr, witness);
+      map.set(msg.pkHash(), Field(0));
+      const txn = await Mina.transaction(deployerAccount, () => {
+        zkApp.storeEligibleAddress(addr, map.getWitness(msg.pkHash()));
       });
       await txn.prove();
-      await txn.sign([senderKey]).send();
-
+      await txn.sign([deployerKey]).send();
+      map.set(msg.pkHash(), msg.hash());
 
       const content = Field(55688)
-      // cond1: 0b100000, cond2: 0b010000, cond3: 0b001000, cond4: 0b000100, cond5: 0b000010, cond6: 0b000001
+      
       const flag = Field(0b100000) 
-      console.log(flag)
-      console.log(Gadgets.leftShift64(content, 6), flag, 64)
       const message = Gadgets.xor(
         Gadgets.leftShift64(content, 6), flag, 64); // assume the message is 64 bits
-        console.log(message)
+
       const newMsg = new Message({ sender: addr, content: content });
       const txn2 = await Mina.transaction(senderAccount, () => {
-        zkApp.storeMessage(addr, message, witness);
+        zkApp.storeMessage(addr, message, map.getWitness(msg.pkHash()));
       });
       await txn2.prove();
       await txn2.sign([senderKey]).send();
-      // const txn2 = await Mina.transaction(addr, () => {
-      //   zkApp.storeMessage(addr, Field(0), witness);
-      // });
-      // await txn2.prove();
-      // await txn2.sign([priv]).send();
 
-      // map.set(newMsg.hash(), message);
-      // const root = map.getRoot()
-      // expect(root).toEqual(zkApp.mapRoot.get());
+      map.set(msg.pkHash(), newMsg.hash());
+      expect(zkApp.mapRoot.get()).toEqual(map.getRoot());
     })
   })
 })
