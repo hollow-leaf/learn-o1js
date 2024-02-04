@@ -1,5 +1,5 @@
-import { MessageContract, Message} from './MessageCH1'
-import { Gadgets, Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap, Poseidon } from 'o1js';
+import { MessageContract, Message} from './CH1Message'
+import { Gadgets, Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap } from 'o1js';
 
 let proofsEnabled = false;
 

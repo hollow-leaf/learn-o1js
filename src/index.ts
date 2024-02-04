@@ -1,3 +1,3 @@
-import { MessageContract } from './MessageCH1.js';
+import { MessageContract } from './CH1Message.js';
 
 export { MessageContract };
