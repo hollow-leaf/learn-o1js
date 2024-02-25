@@ -162,7 +162,7 @@ describe('CH2.SpyMasterContract', () => {
         agentId: Field(1),
         xLocation: Field(100),
         yLocation: Field(5001),
-        checksum: Field(5102)
+        checksum: Field(0) // invalid checksum
       })
     }, {
       messageNumber: Field(1),
@@ -170,7 +170,7 @@ describe('CH2.SpyMasterContract', () => {
         agentId: Field(2),
         xLocation: Field(100),
         yLocation: Field(5001),
-        checksum: Field(5102)
+        checksum: Field(5103)
       })
     }]
 
