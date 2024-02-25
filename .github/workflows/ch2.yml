@@ -1,0 +1,32 @@
+#
+# Run tests for all pushed commits and opened pull requests on Github.
+#
+
+name: CH1 Test
+on:
+  push:
+    paths:
+      - 'src/CH2SpyMessage.ts'
+      - 'src/CH2SpyMessage.test.ts'
+  pull_request:
+    paths:
+      - 'src/CH2SpyMessage.ts'
+      - 'src/CH2SpyMessage.test.ts'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Git checkout
+        uses: actions/checkout@v4
+      - name: NPM ci, build, & test
+        run: |
+          npm install
+          npm run build --if-present
+          npm test -t CH2
+        env:
+          CI: true
