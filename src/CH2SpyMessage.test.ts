@@ -84,106 +84,105 @@ describe('CH2.SpyMasterContract', () => {
 
       expect(zkApp.highestMessageNumber.get()).toEqual(Field(2)); // 0 1 2
     });
-  })
-
-  
-  it('process messages with agentId = 0', async () => {
-    await localDeploy();
-    await SpyMaster.compile()
-    let proof = await SpyMaster.init(Field(0));
-
-    const messages = [{
-      messageNumber: Field(1), 
-      message: new Message({
-        agentId: Field(0),
-        // invalid xLocation, yLocation, checksum
-        xLocation: Field(15001),
-        yLocation: Field(0),
-        checksum: Field(0)
-      })
-    }]
-
-    for (const msg of messages) {
-      proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
-    }
-
-    let txn = await Mina.transaction(deployerAccount, () => {
+    it('process messages with agentId = 0', async () => {
+      await localDeploy();
+      await SpyMaster.compile()
+      let proof = await SpyMaster.init(Field(0));
+      
+      const messages = [{
+        messageNumber: Field(1), 
+        message: new Message({
+          agentId: Field(0),
+          // invalid xLocation, yLocation, checksum
+          xLocation: Field(15001),
+          yLocation: Field(0),
+          checksum: Field(0)
+        })
+      }]
+      
+      for (const msg of messages) {
+        proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
+      }
+      
+      let txn = await Mina.transaction(deployerAccount, () => {
         zkApp.processBatch(proof);
+      });
+      await txn.prove();
+      await txn.sign([deployerKey]).send();
+      
+      expect(zkApp.highestMessageNumber.get()).toEqual(Field(1));
     });
-    await txn.prove();
-    await txn.sign([deployerKey]).send();
-
-    expect(zkApp.highestMessageNumber.get()).toEqual(Field(1));
-  });
-
-  it('process messages with consider is duplicate', async () => {
-    await localDeploy();
-    await SpyMaster.compile()
-    let proof = await SpyMaster.init(Field(0));
-
-    const messages = generateValidMessage(2, 5)
     
-    for (const msg of messages) {
-      proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
-    }
-
-    let txn = await Mina.transaction(deployerAccount, () => {
+    it('process messages with consider is duplicate', async () => {
+      await localDeploy();
+      await SpyMaster.compile()
+      let proof = await SpyMaster.init(Field(0));
+      
+      const messages = generateValidMessage(2, 5)
+      
+      for (const msg of messages) {
+        proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
+      }
+      
+      let txn = await Mina.transaction(deployerAccount, () => {
         zkApp.processBatch(proof);
+      });
+      await txn.prove();
+      await txn.sign([deployerKey]).send();
+      
+      const newMessage = [{
+        messageNumber: Field(1),
+        message: new Message({
+          agentId: Field(1),
+          xLocation: Field(100),
+          yLocation: Field(5001),
+          checksum: Field(5102)
+        })
+      }]
+      
+      for (const msg of newMessage) {
+        proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
+      }
+      
+      expect(zkApp.highestMessageNumber.get()).toEqual(Field(6)); // 5 6
     });
-    await txn.prove();
-    await txn.sign([deployerKey]).send();
-
-    const newMessage = [{
-      messageNumber: Field(1),
-      message: new Message({
-        agentId: Field(1),
-        xLocation: Field(100),
-        yLocation: Field(5001),
-        checksum: Field(5102)
-      })
-    }]
-
-    for (const msg of newMessage) {
-      proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
-    }
-
-    expect(zkApp.highestMessageNumber.get()).toEqual(Field(6)); // 5 6
-  });
-
-  it('process messages: message details are incorrect, discard the message and proceed to the next.', async () => {
-    await localDeploy();
-    await SpyMaster.compile()
-    let proof = await SpyMaster.init(Field(0));
-    // 1 invalid message, 2 valid message
-    const messages = [{
-      messageNumber: Field(0),
-      // invalid xLocation, yLocation, checksum
-      message: new Message({
-        agentId: Field(1),
-        xLocation: Field(100),
-        yLocation: Field(5001),
-        checksum: Field(0) // invalid checksum
-      })
-    }, {
-      messageNumber: Field(1),
-      message: new Message({
-        agentId: Field(2),
-        xLocation: Field(100),
-        yLocation: Field(5001),
-        checksum: Field(5103)
-      })
-    }]
-
-    for (const msg of messages) {
-      proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
-    }
-
-    let txn = await Mina.transaction(deployerAccount, () => {
+    
+    it('process messages: message details are incorrect, discard the message and proceed to the next.', async () => {
+      await localDeploy();
+      await SpyMaster.compile()
+      let proof = await SpyMaster.init(Field(0));
+      // 1 invalid message, 2 valid message
+      const messages = [{
+        messageNumber: Field(0),
+        // invalid xLocation, yLocation, checksum
+        message: new Message({
+          agentId: Field(1),
+          xLocation: Field(100),
+          yLocation: Field(5001),
+          checksum: Field(0) // invalid checksum
+        })
+      }, {
+        messageNumber: Field(1),
+        message: new Message({
+          agentId: Field(2),
+          xLocation: Field(100),
+          yLocation: Field(5001),
+          checksum: Field(5103)
+        })
+      }]
+      
+      for (const msg of messages) {
+        proof = await SpyMaster.processMessage(msg.messageNumber, proof, msg.message);
+      }
+      
+      let txn = await Mina.transaction(deployerAccount, () => {
         zkApp.processBatch(proof);
-    });
-    await txn.prove();
-    await txn.sign([deployerKey]).send();
-
-    expect(zkApp.highestMessageNumber.get()).toEqual(Field(1)); 
+      });
+      await txn.prove();
+      await txn.sign([deployerKey]).send();
+      
+      expect(zkApp.highestMessageNumber.get()).toEqual(Field(1)); 
+    })
   })
-})
+  })
+  
