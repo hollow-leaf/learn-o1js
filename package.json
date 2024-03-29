@@ -15,6 +15,9 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "docker:build": "docker build -t proto-app .",
+    "docker:run": "docker run -p 3000:3000 -p 8080:8080 proto-app",
+    "docker:compose": "docker-compose up -d --build",
     "buildw": "tsc --watch",
     "coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "format": "prettier --write --ignore-unknown **/*",

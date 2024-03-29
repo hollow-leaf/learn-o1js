@@ -1,0 +1,3 @@
+[submodule "protokit"]
+	path = protokit
+	url = git@github.com:proto-kit/starter-kit.git
