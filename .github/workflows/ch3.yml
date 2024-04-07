@@ -1,0 +1,21 @@
+name: CH3 Test
+
+on:
+  push:
+    paths:
+      - 'src/CH3/*'
+  pull_request:
+    paths:
+      - 'src/CH3/*'
+
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+
+      - name: docker compose up and build
+        run: docker-compose up --build
+

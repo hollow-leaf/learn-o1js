@@ -12,4 +12,4 @@ RUN pnpm install
 
 EXPOSE 3000 8080
 
-CMD ["pnpm", "dev"]
+CMD ["pnpm", "test"]
