@@ -18,6 +18,8 @@ export class MessagesRuntime extends RuntimeModule<unknown> {
       agentId: Field, 
       securityCode: Field
   ): void {
+    assert(securityCode.greaterThanOrEqual(Field(10)), "Message too short (min 2 chars)");
+      assert(securityCode.lessThanOrEqual(Field(99)), "Message too long (max 2 chars)");
       const spyInfo = new AgentInfo({ messageNumber: Field(0), securityCode });
       this.agentsMap.set(agentId, spyInfo);
   }
