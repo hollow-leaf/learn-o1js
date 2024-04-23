@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'src/CH3/*'
+      - '.github/workflows/ch3.yml'
   pull_request:
     paths:
       - 'src/CH3/*'
+      - '.github/workflows/ch3.yml'
 
 jobs:
   test:
@@ -15,6 +17,8 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: docker compose up and build
         run: docker-compose up --build
