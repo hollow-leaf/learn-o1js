@@ -1,0 +1,25 @@
+name: CH4 Test
+
+on:
+  push:
+    paths:
+      - 'src/CH4/*'
+      - '.github/workflows/ch4.yml'
+  pull_request:
+    paths:
+      - 'src/CH4/*'
+      - '.github/workflows/ch4.yml'
+
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: docker compose up and build
+        run: docker-compose up --build
+

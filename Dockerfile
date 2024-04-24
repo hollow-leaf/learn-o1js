@@ -8,6 +8,8 @@ COPY ./protokit ./
 
 COPY ./src/CH3 ./packages/chain
 
+COPY ./src/CH4 ./packages/chain
+
 RUN pnpm install
 
 EXPOSE 3000 8080

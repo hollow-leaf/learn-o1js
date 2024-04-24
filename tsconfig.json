@@ -20,5 +20,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["./src"],
-  "exclude": ["./src/CH3"]
+  "exclude": ["./src/CH3", "./src/CH4"]
 }
